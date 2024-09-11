@@ -38,3 +38,5 @@ sns.pairplot(X, hue='quality')
 
 plt.figure(figsize=(15, 15))
 sns.heatmap(X.corr(numeric_only=True), annot=True)
+
+sns.violinplot(X, x='fixed_acidity', y='color')

@@ -4,45 +4,44 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.model_selection import (train_test_split, 
+                                     KFold,  
+                                     GridSearchCV)
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 
 # fetch dataset 
-wine_quality = fetch_ucirepo(id=186) 
+wine_quality = fetch_ucirepo(id=186)
   
 # data (as pandas dataframes) 
 X = wine_quality.data.features 
-y = wine_quality.data.targets
+yq = wine_quality.data.targets
+yc = wine_quality.data.original.color
 
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, 
-    y, 
-    test_size=0.3, 
+X_train, X_test, yc_train, yc_test = train_test_split(
+    X,
+    yc,
+    test_size=0.3,
     random_state=42
 )
 
-scaler = StandardScaler().set_output(transform='pandas')
-X_train_scaled = scaler.fit_transform(X_train)
+pipeline = Pipeline([
+       ('scaler', StandardScaler().set_output(transform='pandas')),
+       ('model', LogisticRegression(max_iter=1000))
+])
 
-X_test_scaled = scaler.transform(X_test)
+param_grid = {
+    'model__C': np.logspace(-2, 2, 10),
+}
 
-linearregression = LinearRegression()
-linearregression.fit(X_train_scaled, y_train)
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
-linearregression.score(X_test_scaled, y_test)
+gridsearch = GridSearchCV(pipeline, param_grid, cv=kf)
+gridsearch.fit(X_train, yc_train)
 
-(linearregression.predict(X_test_scaled).round() - y_test).value_counts()
+model = gridsearch.best_estimator_
+yc_pred = model.predict(X_test)
 
-y_test.shape
-
-sns.scatterplot(x=X.iloc[:, 2], y=y.values.reshape(-1))
-
-sns.heatmap()
-
-plt.figure(figsize=(10, 10))
-sns.heatmap(pd.concat([X, y], axis=1).corr(), annot=True);
-
-
-linearregression.score(X_train_scaled, y_train)         
+_ = ConfusionMatrixDisplay.from_estimator(model, X_test, yc_test)
